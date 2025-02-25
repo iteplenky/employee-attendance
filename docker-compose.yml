@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: employees_db
+    ports:
+      - "5432:5432"
+
+  bot:
+    image: golang:latest
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: "postgres://user:password@postgres:5432/employees_db?sslmode=disable"
+      REDIS_URL: "redis://redis:6379"
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: go run github.com/iteplenky/employee-attendance/cmd/bot

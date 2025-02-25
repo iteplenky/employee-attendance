@@ -1,0 +1,16 @@
+.idea/
+*.exe
+*.out
+*.test
+bin/
+pkg/
+vendor/
+go.sum
+go.work
+go.work.sum
+.env
+.env.local
+*.log
+*.tmp
+*.swp
+docker-compose.override.yml

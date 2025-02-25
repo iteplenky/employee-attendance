@@ -1,0 +1,43 @@
+package bot
+
+import (
+	"github.com/iteplenky/employee-attendance/internal/handlers"
+	"os"
+	"time"
+
+	"github.com/PaulSonOfLars/gotgbot/v2"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+)
+
+type Bot struct {
+	Bot        *gotgbot.Bot
+	Dispatcher *ext.Dispatcher
+}
+
+func NewBot() *Bot {
+	token := os.Getenv("TOKEN")
+	if token == "" {
+		panic("TOKEN environment variable is empty")
+	}
+
+	b, err := gotgbot.NewBot(token, nil)
+	if err != nil {
+		panic("failed to create new bot: " + err.Error())
+	}
+
+	dispatcher := ext.NewDispatcher(nil)
+	dispatcher.AddHandler(handlers.StartHandler())
+	dispatcher.AddHandler(handlers.EchoHandler())
+
+	return &Bot{Bot: b, Dispatcher: dispatcher}
+}
+
+func StartPolling(bot *Bot, updater *ext.Updater) error {
+	return updater.StartPolling(bot.Bot, &ext.PollingOpts{
+		DropPendingUpdates: true,
+		GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
+			Timeout:     9,
+			RequestOpts: &gotgbot.RequestOpts{Timeout: time.Second * 10},
+		},
+	})
+}
