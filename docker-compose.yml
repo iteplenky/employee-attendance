@@ -2,13 +2,13 @@ version: '3.8'
 
 services:
   redis:
-    image: redis:latest
+    image: redis:alpine
     restart: always
     ports:
       - "6379:6379"
 
   postgres:
-    image: postgres:latest
+    image: postgres:15
     restart: always
     environment:
       POSTGRES_USER: user
@@ -16,17 +16,25 @@ services:
       POSTGRES_DB: employees_db
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d employees_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   bot:
-    image: golang:latest
+    build: .
     restart: always
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       DATABASE_URL: "postgres://user:password@postgres:5432/employees_db?sslmode=disable"
       REDIS_URL: "redis://redis:6379"
-    volumes:
-      - .:/app
+    env_file:
+      - .env
     working_dir: /app
-    command: go run github.com/iteplenky/employee-attendance/cmd/bot
+    entrypoint: >
+      sh -c 'goose -dir /app/database/migrations postgres "$$DATABASE_URL" up && chmod +x /app/bot && /app/bot'
