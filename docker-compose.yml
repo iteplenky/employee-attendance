@@ -8,7 +8,7 @@ services:
       - "6379:6379"
 
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     restart: always
     environment:
       POSTGRES_USER: user
@@ -36,5 +36,4 @@ services:
     env_file:
       - .env
     working_dir: /app
-    entrypoint: >
-      sh -c 'goose -dir /app/database/migrations postgres "$$DATABASE_URL" up && chmod +x /app/bot && /app/bot'
+    entrypoint: ["/app/bot-entrypoint.sh"]
