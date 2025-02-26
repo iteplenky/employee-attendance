@@ -37,3 +37,15 @@ func (p *PostgresDB) RegisterUser(userID int64, iin string) error {
 	_, err := p.Exec("INSERT INTO users (tg_id, iin) VALUES ($1, $2)", userID, iin)
 	return err
 }
+
+func (p *PostgresDB) GetUser(userID int64) (*User, error) {
+	var user User
+	err := p.QueryRow("SELECT tg_id, iin FROM users WHERE tg_id=$1", userID).Scan(&user.TgID, &user.IIN)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}

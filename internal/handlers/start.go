@@ -29,7 +29,14 @@ func StartHandler(db database.UserRepository) handlers.Command {
 		}
 
 		if exists {
-			_, _ = ctx.EffectiveMessage.Reply(b, "Привет! Вы уже зарегистрированы.", nil)
+			keyboard := gotgbot.InlineKeyboardMarkup{
+				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+					{{Text: "Профиль", CallbackData: "profile_callback"}},
+				},
+			}
+			_, _ = ctx.EffectiveMessage.Reply(b, "Выберите действие.", &gotgbot.SendMessageOpts{
+				ReplyMarkup: keyboard,
+			})
 		} else {
 			userStates.Store(userID, true)
 			_, _ = ctx.EffectiveMessage.Reply(b, "Вы не зарегистрированы. Пожалуйста, введите ваш ИИН:", nil)
@@ -65,7 +72,15 @@ func IINHandler(db database.UserRepository) handlers.Message {
 		}
 
 		userStates.Delete(userID)
-		_, _ = ctx.EffectiveMessage.Reply(b, "Регистрация успешна! Добро пожаловать!", nil)
+
+		_, _ = ctx.EffectiveMessage.Reply(b, "Регистрация завершена. Выберите действие.", &gotgbot.SendMessageOpts{
+			ReplyMarkup: gotgbot.InlineKeyboardMarkup{
+				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+					{{Text: "Профиль", CallbackData: "profile_callback"}},
+				},
+			},
+		})
+
 		log.Printf("Registered user: %v", userID)
 		return nil
 	})

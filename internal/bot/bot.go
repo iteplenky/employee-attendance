@@ -35,6 +35,7 @@ func NewBot(db database.UserRepository) *Bot {
 func RegisterHandlers(dispatcher *ext.Dispatcher, db database.UserRepository) {
 	dispatcher.AddHandler(handlers.StartHandler(db))
 	dispatcher.AddHandler(handlers.IINHandler(db))
+	dispatcher.AddHandler(handlers.ProfileCallbackHandler(db))
 }
 
 func StartPolling(bot *Bot, updater *ext.Updater) error {
