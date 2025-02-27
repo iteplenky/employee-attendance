@@ -20,12 +20,19 @@ func ProfileCallbackHandler(db database.UserRepository) handlers.CallbackQuery {
 			return err
 		}
 
-		msg := fmt.Sprintf("Ваш профиль:\nИИН: %s", user.IIN)
-		_, _, err = cb.Message.EditText(b, msg, nil)
+		startTime, endTime, err := db.GetSchedule(userID)
 		if err != nil {
+			_, _ = cb.Answer(b, &gotgbot.AnswerCallbackQueryOpts{Text: "Ошибка получения графика."})
 			return err
 		}
 
-		return nil
+		scheduleText := "Не установлен"
+		if startTime != "" && endTime != "" {
+			scheduleText = fmt.Sprintf("%s - %s", startTime[11:16], endTime[11:16])
+		}
+
+		msg := fmt.Sprintf("Ваш профиль:\nИИН: %s\nГрафик работы: %s", user.IIN, scheduleText)
+		_, _, err = cb.Message.EditText(b, msg, nil)
+		return err
 	})
 }

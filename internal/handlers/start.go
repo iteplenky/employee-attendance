@@ -31,7 +31,12 @@ func StartHandler(db database.UserRepository) handlers.Command {
 		if exists {
 			keyboard := gotgbot.InlineKeyboardMarkup{
 				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-					{{Text: "Профиль", CallbackData: "profile_callback"}},
+					{
+						{Text: "Профиль", CallbackData: "profile_callback"},
+					},
+					{
+						{Text: "Настроить оповещения", CallbackData: "schedule_callback"},
+					},
 				},
 			}
 			_, _ = ctx.EffectiveMessage.Reply(b, "Выберите действие.", &gotgbot.SendMessageOpts{
@@ -76,7 +81,12 @@ func IINHandler(db database.UserRepository) handlers.Message {
 		_, _ = ctx.EffectiveMessage.Reply(b, "Регистрация завершена. Выберите действие.", &gotgbot.SendMessageOpts{
 			ReplyMarkup: gotgbot.InlineKeyboardMarkup{
 				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-					{{Text: "Профиль", CallbackData: "profile_callback"}},
+					{
+						{Text: "Профиль", CallbackData: "profile_callback"},
+					},
+					{
+						{Text: "Настроить оповещения", CallbackData: "schedule_callback"},
+					},
 				},
 			},
 		})

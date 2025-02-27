@@ -49,3 +49,29 @@ func (p *PostgresDB) GetUser(userID int64) (*User, error) {
 	}
 	return &user, nil
 }
+
+func (p *PostgresDB) SaveSchedule(userID int64, startTime, endTime string) error {
+	_, err := p.Exec(`
+		INSERT INTO schedules (user_id, start_time, end_time) 
+		VALUES ((SELECT id FROM users WHERE tg_id=$1), $2, $3) 
+		ON CONFLICT (user_id) 
+		DO UPDATE SET start_time=$2, end_time=$3`,
+		userID, startTime, endTime)
+	return err
+}
+
+func (p *PostgresDB) GetSchedule(userID int64) (string, string, error) {
+	var startTime, endTime string
+	err := p.QueryRow(`
+		SELECT start_time, end_time FROM schedules 
+		WHERE user_id = (SELECT id FROM users WHERE tg_id=$1)`,
+		userID).Scan(&startTime, &endTime)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", nil
+		}
+		return "", "", err
+	}
+	return startTime, endTime, nil
+}
