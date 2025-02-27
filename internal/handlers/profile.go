@@ -25,8 +25,18 @@ func ProfileCallbackHandler(db database.UserRepository) handlers.CallbackQuery {
 			notificationText = "Подписаны"
 		}
 
+		keyboard := &gotgbot.EditMessageTextOpts{
+			ReplyMarkup: gotgbot.InlineKeyboardMarkup{
+				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+					{
+						{Text: "Настроить оповещения", CallbackData: "notifications_callback"},
+					},
+				},
+			},
+		}
+
 		msg := fmt.Sprintf("Ваш профиль:\nИИН: %s\nОповещения: %s", user.IIN, notificationText)
-		_, _, err = cb.Message.EditText(b, msg, nil)
+		_, _, err = cb.Message.EditText(b, msg, keyboard)
 		return err
 	})
 }

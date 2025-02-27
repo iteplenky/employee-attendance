@@ -29,6 +29,9 @@ func NotificationsSettingsHandler(db database.UserRepository) handlers.CallbackQ
 				{
 					{Text: buttonText, CallbackData: "toggle_notifications"},
 				},
+				{
+					{Text: "Профиль", CallbackData: "profile_callback"},
+				},
 			},
 		}
 
@@ -68,6 +71,9 @@ func ToggleNotificationsHandler(db database.UserRepository) handlers.CallbackQue
 			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 				{
 					{Text: buttonText, CallbackData: "toggle_notifications"},
+				},
+				{
+					{Text: "Профиль", CallbackData: "profile_callback"},
 				},
 			},
 		}
