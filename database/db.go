@@ -24,13 +24,7 @@ func NewPostgresDB(dbURL string) (*PostgresDB, error) {
 func (p *PostgresDB) UserExists(userID int64) (bool, error) {
 	var exists bool
 	err := p.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE tg_id=$1)", userID).Scan(&exists)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
-		return false, err
-	}
-	return exists, nil
+	return exists, err
 }
 
 func (p *PostgresDB) RegisterUser(userID int64, iin string) error {
@@ -40,38 +34,26 @@ func (p *PostgresDB) RegisterUser(userID int64, iin string) error {
 
 func (p *PostgresDB) GetUser(userID int64) (*User, error) {
 	var user User
-	err := p.QueryRow("SELECT tg_id, iin FROM users WHERE tg_id=$1", userID).Scan(&user.TgID, &user.IIN)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
+	err := p.QueryRow("SELECT tg_id, iin, notifications_enabled FROM users WHERE tg_id=$1",
+		userID).Scan(&user.TgID, &user.IIN, &user.NotificationsEnabled)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
 	}
-	return &user, nil
+	return &user, err
 }
 
-func (p *PostgresDB) SaveSchedule(userID int64, startTime, endTime string) error {
-	_, err := p.Exec(`
-		INSERT INTO schedules (user_id, start_time, end_time) 
-		VALUES ((SELECT id FROM users WHERE tg_id=$1), $2, $3) 
-		ON CONFLICT (user_id) 
-		DO UPDATE SET start_time=$2, end_time=$3`,
-		userID, startTime, endTime)
+func (p *PostgresDB) EnableNotifications(userID int64) error {
+	_, err := p.Exec("UPDATE users SET notifications_enabled = TRUE WHERE tg_id = $1", userID)
 	return err
 }
 
-func (p *PostgresDB) GetSchedule(userID int64) (string, string, error) {
-	var startTime, endTime string
-	err := p.QueryRow(`
-		SELECT start_time, end_time FROM schedules 
-		WHERE user_id = (SELECT id FROM users WHERE tg_id=$1)`,
-		userID).Scan(&startTime, &endTime)
+func (p *PostgresDB) AreNotificationsEnabled(userID int64) (bool, error) {
+	var enabled bool
+	err := p.QueryRow("SELECT notifications_enabled FROM users WHERE tg_id = $1", userID).Scan(&enabled)
+	return enabled, err
+}
 
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", "", nil
-		}
-		return "", "", err
-	}
-	return startTime, endTime, nil
+func (p *PostgresDB) ToggleNotifications(userID int64, enabled bool) error {
+	_, err := p.Exec("UPDATE users SET notifications_enabled = $1 WHERE tg_id = $2", enabled, userID)
+	return err
 }

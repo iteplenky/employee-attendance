@@ -35,7 +35,7 @@ func StartHandler(db database.UserRepository) handlers.Command {
 						{Text: "Профиль", CallbackData: "profile_callback"},
 					},
 					{
-						{Text: "Настроить оповещения", CallbackData: "schedule_callback"},
+						{Text: "Настроить оповещения", CallbackData: "notifications_callback"},
 					},
 				},
 			}
@@ -44,7 +44,7 @@ func StartHandler(db database.UserRepository) handlers.Command {
 			})
 		} else {
 			userStates.Store(userID, true)
-			_, _ = ctx.EffectiveMessage.Reply(b, "Вы не зарегистрированы. Пожалуйста, введите ваш ИИН:", nil)
+			_, _ = ctx.EffectiveMessage.Reply(b, "Вы не зарегистрированы. Введите ваш ИИН:", nil)
 		}
 		return nil
 	})
@@ -85,7 +85,7 @@ func IINHandler(db database.UserRepository) handlers.Message {
 						{Text: "Профиль", CallbackData: "profile_callback"},
 					},
 					{
-						{Text: "Настроить оповещения", CallbackData: "schedule_callback"},
+						{Text: "Настроить оповещения", CallbackData: "notifications_callback"},
 					},
 				},
 			},

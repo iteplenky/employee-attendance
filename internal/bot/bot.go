@@ -36,8 +36,8 @@ func RegisterHandlers(dispatcher *ext.Dispatcher, db database.UserRepository) {
 	dispatcher.AddHandler(handlers.StartHandler(db))
 	dispatcher.AddHandler(handlers.IINHandler(db))
 	dispatcher.AddHandler(handlers.ProfileCallbackHandler(db))
-	dispatcher.AddHandler(handlers.ScheduleCallbackHandler())
-	dispatcher.AddHandler(handlers.ScheduleSelectionHandler(db))
+	dispatcher.AddHandler(handlers.NotificationsSettingsHandler(db))
+	dispatcher.AddHandler(handlers.ToggleNotificationsHandler(db))
 }
 
 func StartPolling(bot *Bot, updater *ext.Updater) error {
