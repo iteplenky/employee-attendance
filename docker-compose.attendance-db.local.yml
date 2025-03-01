@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  postgres-local:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: biotime
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d biotime"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - ./init-attendance-trigger.sh:/docker-entrypoint-initdb.d/init-attendance-trigger.sh
