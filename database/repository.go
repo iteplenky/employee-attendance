@@ -13,4 +13,5 @@ type UserRepository interface {
 	EnableNotifications(userID int64) error
 	AreNotificationsEnabled(userID int64) (bool, error)
 	ToggleNotifications(userID int64, enabled bool) error
+	GetAllSubscribers() (map[string]int64, error)
 }

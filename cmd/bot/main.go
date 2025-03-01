@@ -1,54 +1,65 @@
 package main
 
 import (
+	"context"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/iteplenky/employee-attendance/config"
 	"github.com/iteplenky/employee-attendance/database"
+	"github.com/iteplenky/employee-attendance/internal/attendance"
 	"github.com/iteplenky/employee-attendance/internal/bot"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
-	err := godotenv.Load()
+	cfg := config.Load()
+	db, err := database.NewPostgresDB(cfg.DBConnURL)
 	if err != nil {
-		log.Println("No .env file found, using environment variables")
+		log.Fatal("failed to connect to database:", err)
 	}
+	defer db.Close()
 
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("DATABASE_URL environment variable is not set")
-	}
-
-	db, err := database.NewPostgresDB(dbURL)
+	cache, err := database.NewRedisCache(cfg.RedisAddr, "", 0)
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		log.Fatal("failed to connect to redis:", err)
 	}
-	defer func(db *database.PostgresDB) {
-		if err = db.Close(); err != nil {
-			log.Fatal("Failed to close database:", err)
-		}
-	}(db)
+	defer cache.Close()
 
-	dbAttendanceURL := os.Getenv("DATABASE_ATTENDANCE_URL")
-	if dbAttendanceURL == "" {
-		log.Fatal("DATABASE_ATTENDANCE_URL environment variable is not set")
-	}
-
-	listener, err := database.NewListener(dbAttendanceURL)
+	listener, err := database.NewListener(cfg.DBAttendanceURL, cache)
 	if err != nil {
-		log.Fatal("Failed to initialize listener:", err)
+		log.Fatal("failed to initialize listener:", err)
 	}
 	defer listener.Close()
 
-	go listener.StartListening()
+	b := bot.NewBot(db, cache)
+	subscribers, err := db.GetAllSubscribers()
+	if err != nil {
+		log.Fatal("failed to get all subscribers:", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	b := bot.NewBot(db)
+	go listener.StartListening(ctx)
+
+	bot.LoadSubscribersToCache(ctx, cache, subscribers)
+
+	go attendance.HandleAttendanceEvents(ctx, cache, b)
+
 	updater := ext.NewUpdater(b.Dispatcher, nil)
 	if err = bot.StartPolling(b, updater); err != nil {
-		log.Fatal("Failed to start polling:", err)
+		log.Fatal("failed to start polling:", err)
 	}
-
 	log.Printf("%s has been started...\n", b.Bot.User.Username)
-	updater.Idle()
+
+	go updater.Idle()
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	<-sig
+	log.Println("Shutting down...")
+	cancel()
+	updater.Stop()
+	log.Println("Bot stopped gracefully")
 }

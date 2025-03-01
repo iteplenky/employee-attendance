@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
 	"github.com/iteplenky/employee-attendance/database"
+	"log"
 )
 
 func NotificationsSettingsHandler(db database.UserRepository) handlers.CallbackQuery {
@@ -42,10 +45,11 @@ func NotificationsSettingsHandler(db database.UserRepository) handlers.CallbackQ
 	})
 }
 
-func ToggleNotificationsHandler(db database.UserRepository) handlers.CallbackQuery {
+func ToggleNotificationsHandler(db database.UserRepository, cache database.Cache) handlers.CallbackQuery {
 	return handlers.NewCallback(callbackquery.Equal("toggle_notifications"), func(b *gotgbot.Bot, ctx *ext.Context) error {
 		cb := ctx.Update.CallbackQuery
 		userID := cb.From.Id
+		userIDStr := fmt.Sprintf("%d", userID) // Redis работает со строками
 
 		enabled, err := db.AreNotificationsEnabled(userID)
 		if err != nil {
@@ -58,6 +62,23 @@ func ToggleNotificationsHandler(db database.UserRepository) handlers.CallbackQue
 		if err != nil {
 			_, _ = cb.Answer(b, &gotgbot.AnswerCallbackQueryOpts{Text: "Ошибка обновления настроек."})
 			return err
+		}
+
+		goCtx := context.Background()
+
+		user, err := db.GetUser(userID)
+		if err != nil {
+			_, _ = cb.Answer(b, &gotgbot.AnswerCallbackQueryOpts{Text: "Ошибка получения пользователя."})
+			return err
+		}
+
+		if newState {
+			err = cache.HSet(goCtx, "subscribed_users", user.IIN, userIDStr)
+		} else {
+			err = cache.HDel(goCtx, "subscribed_users", user.IIN)
+		}
+		if err != nil {
+			log.Printf("Ошибка обновления подписчиков в Redis: %v", err)
 		}
 
 		buttonText := "Подписаться"

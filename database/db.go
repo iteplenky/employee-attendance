@@ -57,3 +57,24 @@ func (p *PostgresDB) ToggleNotifications(userID int64, enabled bool) error {
 	_, err := p.Exec("UPDATE users SET notifications_enabled = $1 WHERE tg_id = $2", enabled, userID)
 	return err
 }
+
+func (p *PostgresDB) GetAllSubscribers() (map[string]int64, error) {
+	subscribers := make(map[string]int64)
+
+	rows, err := p.Query("SELECT iin, tg_id FROM users WHERE notifications_enabled = TRUE")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var empCode string
+		var tgID int64
+		if err = rows.Scan(&empCode, &tgID); err != nil {
+			return nil, err
+		}
+		subscribers[empCode] = tgID
+	}
+
+	return subscribers, nil
+}
