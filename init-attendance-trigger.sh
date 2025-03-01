@@ -10,7 +10,7 @@ done
 PGPASSWORD=password psql -U user -d biotime <<EOSQL
     CREATE TABLE IF NOT EXISTS attendance_log (
         id SERIAL PRIMARY KEY,
-        emp_id INT NOT NULL,
+        emp_id TEXT NOT NULL,
         punch_time TIMESTAMP DEFAULT now(),
         terminal_alias TEXT NOT NULL,
         processed BOOLEAN DEFAULT FALSE
