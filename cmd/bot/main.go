@@ -30,6 +30,19 @@ func main() {
 		}
 	}(db)
 
+	dbAttendanceURL := os.Getenv("DATABASE_ATTENDANCE_URL")
+	if dbAttendanceURL == "" {
+		log.Fatal("DATABASE_ATTENDANCE_URL environment variable is not set")
+	}
+
+	listener, err := database.NewListener(dbAttendanceURL)
+	if err != nil {
+		log.Fatal("Failed to initialize listener:", err)
+	}
+	defer listener.Close()
+
+	go listener.StartListening()
+
 	b := bot.NewBot(db)
 	updater := ext.NewUpdater(b.Dispatcher, nil)
 	if err = bot.StartPolling(b, updater); err != nil {
