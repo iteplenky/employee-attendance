@@ -38,6 +38,7 @@ func ProfileCallbackHandler(db *application.UserService) handlers.CallbackQuery 
 		_, _, err = ctx.Update.CallbackQuery.Message.EditText(b, msg, &gotgbot.EditMessageTextOpts{
 			ReplyMarkup: gotgbot.InlineKeyboardMarkup{
 				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+					{{Text: "Мои явки", CallbackData: "attendance_callback"}},
 					{{Text: "Настройки", CallbackData: "profile_settings"}},
 				},
 			},

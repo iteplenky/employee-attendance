@@ -25,10 +25,17 @@ func main() {
 	}
 	defer cache.Close()
 
+	fetcher, err := infrastructure.NewFetcher(cfg.DBAttendanceURL)
+	if err != nil {
+		log.Fatal("failed to connect to fetcher:", err)
+	}
+	defer fetcher.Close()
+
 	userService := application.NewUserService(db)
+	fetcherService := application.NewFetcherService(fetcher)
 	subscriptionService := application.NewSubscriptionService(db, cache)
 
-	b, err := bot.NewBot(userService, subscriptionService)
+	b, err := bot.NewBot(userService, subscriptionService, fetcherService)
 	if err != nil {
 		log.Fatal("failed to initialize bot:", err)
 	}

@@ -21,9 +21,10 @@ type Bot struct {
 	Dispatcher          *ext.Dispatcher
 	UserService         *application.UserService
 	SubscriptionService *application.SubscriptionService
+	FetcherService      *application.FetcherService
 }
 
-func NewBot(userService *application.UserService, subs *application.SubscriptionService) (*Bot, error) {
+func NewBot(userService *application.UserService, subs *application.SubscriptionService, fetcher *application.FetcherService) (*Bot, error) {
 	token := os.Getenv("TOKEN")
 	if token == "" {
 		return nil, fmt.Errorf("TOKEN environment variable is empty")
@@ -35,7 +36,7 @@ func NewBot(userService *application.UserService, subs *application.Subscription
 	}
 
 	dispatcher := ext.NewDispatcher(nil)
-	registerHandlers(dispatcher, userService, subs)
+	registerHandlers(dispatcher, userService, subs, fetcher)
 
 	return &Bot{
 		Bot:                 b,
@@ -74,10 +75,11 @@ func (b *Bot) Start(ctx context.Context) error {
 	return nil
 }
 
-func registerHandlers(dispatcher *ext.Dispatcher, userService *application.UserService, subs *application.SubscriptionService) {
+func registerHandlers(dispatcher *ext.Dispatcher, userService *application.UserService, subs *application.SubscriptionService, fetcher *application.FetcherService) {
 	dispatcher.AddHandler(handlers.StartHandler(userService))
 	dispatcher.AddHandler(handlers.IINHandler(userService))
 	dispatcher.AddHandler(handlers.ProfileCallbackHandler(userService))
+	dispatcher.AddHandler(handlers.AttendanceCallbackHandler(userService, fetcher))
 	dispatcher.AddHandler(handlers.NotificationsSettingsHandler(userService))
 	dispatcher.AddHandler(handlers.ToggleNotificationsHandler(userService, subs))
 	dispatcher.AddHandler(handlers.SettingsMenuCallbackHandler(userService))

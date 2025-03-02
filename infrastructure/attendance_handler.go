@@ -4,20 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/iteplenky/employee-attendance/domain"
 	"log"
 	"strconv"
 	"time"
 
 	"github.com/iteplenky/employee-attendance/internal/bot"
 )
-
-type AttendanceEvent struct {
-	ID            int    `json:"id"`
-	IIN           string `json:"emp_id"`
-	PunchTime     string `json:"punch_time"`
-	TerminalAlias string `json:"terminal_alias"`
-	Processed     bool   `json:"processed"`
-}
 
 func HandleAttendanceEvents(ctx context.Context, cache *RedisCache, b *bot.Bot) {
 	ch := cache.Subscribe(ctx, "attendance_events")
@@ -30,7 +23,7 @@ func HandleAttendanceEvents(ctx context.Context, cache *RedisCache, b *bot.Bot) 
 			}
 			log.Println("Received event:", msg)
 
-			var event AttendanceEvent
+			var event domain.AttendanceEvent
 			if err := json.Unmarshal([]byte(msg), &event); err != nil {
 				log.Printf("failed to unmarshal event: %v\n", err)
 				continue
@@ -53,7 +46,7 @@ func HandleAttendanceEvents(ctx context.Context, cache *RedisCache, b *bot.Bot) 
 				continue
 			}
 
-			if _, err = b.Bot.SendMessage(tgID, FormatAttendanceMessage(event), nil); err != nil {
+			if _, err = b.Bot.SendMessage(tgID, formatAttendanceMessage(event), nil); err != nil {
 				log.Printf("failed to send message: %v\n", err)
 			}
 		case <-ctx.Done():
@@ -63,7 +56,7 @@ func HandleAttendanceEvents(ctx context.Context, cache *RedisCache, b *bot.Bot) 
 	}
 }
 
-func FormatAttendanceMessage(event AttendanceEvent) string {
+func formatAttendanceMessage(event domain.AttendanceEvent) string {
 	return fmt.Sprintf(
 		"✨ Вы отметились в %s у терминала %s",
 		formatTime(event.PunchTime), event.TerminalAlias,
