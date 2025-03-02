@@ -2,106 +2,107 @@ package handlers
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
+	"errors"
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
-	"github.com/iteplenky/employee-attendance/database"
+	"github.com/iteplenky/employee-attendance/application"
 	"log"
 )
 
-func NotificationsSettingsHandler(db database.UserRepository) handlers.CallbackQuery {
+func NotificationsSettingsHandler(db *application.UserService) handlers.CallbackQuery {
 	return handlers.NewCallback(callbackquery.Equal("notifications_callback"), func(b *gotgbot.Bot, ctx *ext.Context) error {
 		cb := ctx.Update.CallbackQuery
 		userID := cb.From.Id
 
-		enabled, err := db.AreNotificationsEnabled(userID)
-		if err != nil {
-			_, _ = cb.Answer(b, &gotgbot.AnswerCallbackQueryOpts{Text: "Ошибка получения статуса оповещений."})
+		enabled, err := db.AreNotificationsEnabled(context.Background(), userID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("error checking notifications enabled: %v\n", err)
+			sendErrorMessage(b, cb, userID, "Ошибка получения статуса оповещений.")
 			return err
 		}
 
-		buttonText := "Подписаться"
-		if enabled {
-			buttonText = "Отписаться"
-		}
-
-		keyboard := gotgbot.InlineKeyboardMarkup{
-			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-				{
-					{Text: buttonText, CallbackData: "toggle_notifications"},
-				},
-				{
-					{Text: "Профиль", CallbackData: "profile_callback"},
-				},
-			},
-		}
-
 		_, _, err = cb.Message.EditText(b, "Настройки оповещений:", &gotgbot.EditMessageTextOpts{
-			ReplyMarkup: keyboard,
+			ReplyMarkup: getNotificationKeyboard(enabled),
 		})
+		if err != nil {
+			log.Printf("error editing message: %v\n", err)
+			sendErrorMessage(b, cb, userID, "Ошибка при изменении сообщения.")
+		}
 		return err
 	})
 }
 
-func ToggleNotificationsHandler(db database.UserRepository, cache database.Cache) handlers.CallbackQuery {
+func ToggleNotificationsHandler(db *application.UserService, cache *application.SubscriptionService) handlers.CallbackQuery {
 	return handlers.NewCallback(callbackquery.Equal("toggle_notifications"), func(b *gotgbot.Bot, ctx *ext.Context) error {
 		cb := ctx.Update.CallbackQuery
 		userID := cb.From.Id
-		userIDStr := fmt.Sprintf("%d", userID) // Redis работает со строками
 
-		enabled, err := db.AreNotificationsEnabled(userID)
-		if err != nil {
-			_, _ = cb.Answer(b, &gotgbot.AnswerCallbackQueryOpts{Text: "Ошибка получения статуса."})
+		enabled, err := db.AreNotificationsEnabled(context.Background(), userID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("error checking notifications enabled: %v\n", err)
+			sendErrorMessage(b, cb, userID, "Ошибка получения статуса.")
 			return err
 		}
 
 		newState := !enabled
-		err = db.ToggleNotifications(userID, newState)
+		err = db.ToggleNotifications(context.Background(), userID, newState)
 		if err != nil {
-			_, _ = cb.Answer(b, &gotgbot.AnswerCallbackQueryOpts{Text: "Ошибка обновления настроек."})
+			log.Printf("error toggling notifications: %v\n", err)
+			sendErrorMessage(b, cb, userID, "Ошибка обновления настроек.")
 			return err
 		}
 
-		goCtx := context.Background()
-
-		user, err := db.GetUser(userID)
+		user, err := db.GetUser(context.Background(), userID)
 		if err != nil {
-			_, _ = cb.Answer(b, &gotgbot.AnswerCallbackQueryOpts{Text: "Ошибка получения пользователя."})
+			log.Printf("error getting user: %v\n", err)
+			sendErrorMessage(b, cb, userID, "Ошибка получения пользователя.")
 			return err
 		}
 
-		if newState {
-			err = cache.HSet(goCtx, "subscribed_users", user.IIN, userIDStr)
-		} else {
-			err = cache.HDel(goCtx, "subscribed_users", user.IIN)
-		}
-		if err != nil {
-			log.Printf("Ошибка обновления подписчиков в Redis: %v", err)
+		if user == nil {
+			sendErrorMessage(b, cb, userID, "Ошибка получения пользователя.")
+			return errors.New("no user found")
 		}
 
-		buttonText := "Подписаться"
 		statusText := "Вы отписались от оповещений."
 		if newState {
-			buttonText = "Отписаться"
 			statusText = "Вы подписаны на оповещения."
+			err = cache.SaveSubscribersToCache(context.Background(), map[string]int64{user.IIN: userID})
+		} else {
+			err = cache.RemoveSubscriberFromCache(context.Background(), user.IIN)
 		}
-
-		keyboard := gotgbot.InlineKeyboardMarkup{
-			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-				{
-					{Text: buttonText, CallbackData: "toggle_notifications"},
-				},
-				{
-					{Text: "Профиль", CallbackData: "profile_callback"},
-				},
-			},
+		if err != nil {
+			log.Printf("error removing subscriber from cache: %v", err)
 		}
 
 		_, _, err = cb.Message.EditText(b, statusText, &gotgbot.EditMessageTextOpts{
-			ReplyMarkup: keyboard,
+			ReplyMarkup: getNotificationKeyboard(newState),
 		})
+		if err != nil {
+			log.Printf("error updating notifications: %v\n", err)
+			sendErrorMessage(b, cb, userID, "Ошибка при изменении сообщения.")
+		}
 		return err
 	})
+}
+
+func getNotificationKeyboard(enabled bool) gotgbot.InlineKeyboardMarkup {
+	buttonText := "🔔 Подписаться"
+	if enabled {
+		buttonText = "🔕 Отписаться"
+	}
+
+	return gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{
+				{Text: buttonText, CallbackData: "toggle_notifications"},
+			},
+			{
+				{Text: "Назад в Настройки", CallbackData: "profile_settings"},
+			},
+		},
+	}
 }

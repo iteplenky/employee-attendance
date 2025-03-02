@@ -19,11 +19,11 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: employees_db
+      POSTGRES_DB: employee-attendance
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d employees_db"]
+      test: ["CMD-SHELL", "pg_isready -U user -d employee-attendance"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -37,7 +37,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: "postgres://user:password@postgres:5432/employees_db?sslmode=disable"
+      DATABASE_URL: "postgres://user:password@postgres:5432/employee-attendance?sslmode=disable"
       REDIS_URL: "redis://redis:6379"
     env_file:
       - .env

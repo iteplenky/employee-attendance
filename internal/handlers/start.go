@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
-	"github.com/iteplenky/employee-attendance/database"
+	"github.com/iteplenky/employee-attendance/application"
 	"log"
 	"sync"
 	"unicode/utf8"
@@ -12,8 +13,9 @@ import (
 
 var userStates sync.Map
 
-func StartHandler(db database.UserRepository) handlers.Command {
+func StartHandler(db *application.UserService) handlers.Command {
 	return handlers.NewCommand("start", func(b *gotgbot.Bot, ctx *ext.Context) error {
+		cb := ctx.Update.CallbackQuery
 		userID := ctx.EffectiveUser.Id
 
 		if _, exists := userStates.Load(userID); exists {
@@ -21,27 +23,15 @@ func StartHandler(db database.UserRepository) handlers.Command {
 			return nil
 		}
 
-		exists, err := db.UserExists(userID)
+		user, err := db.GetUser(context.Background(), userID)
 		if err != nil {
-			_, _ = ctx.EffectiveMessage.Reply(b, "Попробуйте позже.", nil)
-			log.Printf("error checking if user exists: %v", err)
+			log.Printf("error getting user: %v\n", err)
+			sendErrorMessage(b, cb, userID, "Ошибка при получении данных пользователя.")
 			return err
 		}
 
-		if exists {
-			keyboard := gotgbot.InlineKeyboardMarkup{
-				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-					{
-						{Text: "Профиль", CallbackData: "profile_callback"},
-					},
-					{
-						{Text: "Настроить оповещения", CallbackData: "notifications_callback"},
-					},
-				},
-			}
-			_, _ = ctx.EffectiveMessage.Reply(b, "Выберите действие.", &gotgbot.SendMessageOpts{
-				ReplyMarkup: keyboard,
-			})
+		if user != nil {
+			showStartMenu(b, ctx)
 		} else {
 			userStates.Store(userID, true)
 			_, _ = ctx.EffectiveMessage.Reply(b, "Вы не зарегистрированы. Введите ваш ИИН:", nil)
@@ -50,8 +40,9 @@ func StartHandler(db database.UserRepository) handlers.Command {
 	})
 }
 
-func IINHandler(db database.UserRepository) handlers.Message {
+func IINHandler(db *application.UserService) handlers.Message {
 	return handlers.NewMessage(nil, func(b *gotgbot.Bot, ctx *ext.Context) error {
+		cb := ctx.Update.CallbackQuery
 		userID := ctx.EffectiveUser.Id
 
 		if _, exists := userStates.Load(userID); !exists {
@@ -61,37 +52,20 @@ func IINHandler(db database.UserRepository) handlers.Message {
 		iin := ctx.EffectiveMessage.Text
 		iinLen := utf8.RuneCountInString(iin)
 
-		if iinLen < 8 {
-			_, _ = ctx.EffectiveMessage.Reply(b, "Недостаточная длина ИИН, перепроверьте и введите еще раз.", nil)
-			return nil
-		} else if iinLen > 12 {
-			_, _ = ctx.EffectiveMessage.Reply(b, "Большая длина ИИН, перепроверьте и введите еще раз.", nil)
+		if iinLen < 10 || iinLen > 14 {
+			_, _ = ctx.EffectiveMessage.Reply(b, "Некорректная длина ИИН, введите еще раз.", nil)
 			return nil
 		}
 
-		err := db.RegisterUser(userID, iin)
+		err := db.RegisterUser(context.Background(), userID, iin)
 		if err != nil {
-			_, _ = ctx.EffectiveMessage.Reply(b, "Попробуйте позже.", nil)
-			log.Printf("error registering user: %v", err)
+			log.Printf("error registering user: %v\n", err)
+			sendErrorMessage(b, cb, userID, "Ошибка при регистрации, попробуйте позже.")
 			return err
 		}
 
 		userStates.Delete(userID)
-
-		_, _ = ctx.EffectiveMessage.Reply(b, "Регистрация завершена. Выберите действие.", &gotgbot.SendMessageOpts{
-			ReplyMarkup: gotgbot.InlineKeyboardMarkup{
-				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-					{
-						{Text: "Профиль", CallbackData: "profile_callback"},
-					},
-					{
-						{Text: "Настроить оповещения", CallbackData: "notifications_callback"},
-					},
-				},
-			},
-		})
-
-		log.Printf("Registered user: %v", userID)
+		showStartMenu(b, ctx)
 		return nil
 	})
 }

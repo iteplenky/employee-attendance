@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "Ожидание PostgreSQL..."
+echo "Waiting for PostgreSQL..."
 # shellcheck disable=SC3020
 until PGPASSWORD=password psql -U user -d biotime -c "SELECT 1" &>/dev/null; do
   sleep 1
@@ -28,5 +28,3 @@ PGPASSWORD=password psql -U user -d biotime <<EOSQL
     AFTER INSERT ON attendance_log
     FOR EACH ROW EXECUTE FUNCTION notify_attendance_event();
 EOSQL
-
-echo "База данных готова!"

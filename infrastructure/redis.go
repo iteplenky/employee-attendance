@@ -1,4 +1,4 @@
-package database
+package infrastructure
 
 import (
 	"context"
@@ -11,7 +11,7 @@ type RedisCache struct {
 	client *redis.Client
 }
 
-func NewRedisCache(addr, password string, db int) (Cache, error) {
+func NewRedisCache(addr, password string, db int) (*RedisCache, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
@@ -25,7 +25,7 @@ func NewRedisCache(addr, password string, db int) (Cache, error) {
 		return nil, err
 	}
 
-	log.Println("connect to redis successfully")
+	log.Println("connected to redis successfully")
 	return &RedisCache{client: rdb}, nil
 }
 
