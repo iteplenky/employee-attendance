@@ -27,7 +27,7 @@ func (s *SubscriptionService) LoadSubscribersToCache(ctx context.Context) error 
 	}
 
 	for iin, userID := range subscribers {
-		err = s.cache.HSet(ctx, "subscribed_users", iin, strconv.FormatInt(userID, 10))
+		err = s.cache.Set(ctx, iin, strconv.FormatInt(userID, 10))
 		if err != nil {
 			return err
 		}
@@ -37,7 +37,7 @@ func (s *SubscriptionService) LoadSubscribersToCache(ctx context.Context) error 
 }
 func (s *SubscriptionService) SaveSubscribersToCache(ctx context.Context, subscribers map[string]int64) error {
 	for iin, userID := range subscribers {
-		if err := s.cache.HSet(ctx, "subscribed_users", iin, strconv.FormatInt(userID, 10)); err != nil {
+		if err := s.cache.Set(ctx, iin, strconv.FormatInt(userID, 10)); err != nil {
 			return fmt.Errorf("error adding subscriber %v: %w", userID, err)
 		}
 	}
@@ -45,5 +45,5 @@ func (s *SubscriptionService) SaveSubscribersToCache(ctx context.Context, subscr
 }
 
 func (s *SubscriptionService) RemoveSubscriberFromCache(ctx context.Context, iin string) error {
-	return s.cache.HDel(ctx, "subscribed_users", iin)
+	return s.cache.Del(ctx, iin)
 }

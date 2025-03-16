@@ -22,10 +22,6 @@ func NewListener(dbURL string, cache *RedisCache) (*Listener, error) {
 		return nil, errors.New("unable to connect to database listener")
 	}
 
-	if err := listener.Listen("attendance_events"); err != nil {
-		return nil, errors.New("unable to listen attendance_events")
-	}
-
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		return nil, err
@@ -33,6 +29,10 @@ func NewListener(dbURL string, cache *RedisCache) (*Listener, error) {
 
 	if err = db.Ping(); err != nil {
 		return nil, err
+	}
+
+	if err = listener.Listen("attendance_events"); err != nil {
+		return nil, errors.New("unable to listen attendance_events")
 	}
 
 	return &Listener{listener: listener, db: db, cache: cache}, nil
@@ -51,13 +51,18 @@ func (l *Listener) StartListening(ctx context.Context) {
 			}
 		case <-ctx.Done():
 			log.Println("Shutting down listener")
-			l.listener.Close()
+			err := l.listener.Close()
+			if err != nil {
+				return
+			}
 			return
 		}
 	}
 }
 
 func (l *Listener) Close() error {
-	l.listener.Close()
+	if err := l.listener.Close(); err != nil {
+		return err
+	}
 	return l.db.Close()
 }

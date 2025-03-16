@@ -29,14 +29,9 @@ func HandleAttendanceEvents(ctx context.Context, cache *RedisCache, b *bot.Bot) 
 				continue
 			}
 
-			members, err := cache.HGetAll(context.Background(), "subscribed_users")
+			user, err := cache.Get(context.Background(), event.IIN)
 			if err != nil {
-				log.Printf("failed to fetch subscribed_users: %v\n", err)
-				continue
-			}
-
-			user, exists := members[event.IIN]
-			if !exists {
+				log.Printf("failed to get user: %v\n", err)
 				continue
 			}
 

@@ -37,6 +37,10 @@ func (r *RedisCache) Get(ctx context.Context, key string) (string, error) {
 	return r.client.Get(ctx, key).Result()
 }
 
+func (r *RedisCache) Del(ctx context.Context, key string) error {
+	return r.client.Del(ctx, key).Err()
+}
+
 func (r *RedisCache) Publish(ctx context.Context, channel, message string) error {
 	return r.client.Publish(ctx, channel, message).Err()
 }
@@ -57,20 +61,4 @@ func (r *RedisCache) Subscribe(ctx context.Context, channel string) <-chan strin
 
 func (r *RedisCache) Close() error {
 	return r.client.Close()
-}
-
-func (r *RedisCache) HSet(ctx context.Context, key, field, value string) error {
-	return r.client.HSet(ctx, key, field, value).Err()
-}
-
-func (r *RedisCache) HDel(ctx context.Context, key string, fields ...string) error {
-	return r.client.HDel(ctx, key, fields...).Err()
-}
-
-func (r *RedisCache) HGet(ctx context.Context, key, field string) (string, error) {
-	return r.client.HGet(ctx, key, field).Result()
-}
-
-func (r *RedisCache) HGetAll(ctx context.Context, key string) (map[string]string, error) {
-	return r.client.HGetAll(ctx, key).Result()
 }

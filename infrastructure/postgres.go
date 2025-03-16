@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/iteplenky/employee-attendance/domain"
 	_ "github.com/lib/pq"
+	"log"
 )
 
 type PostgresDB struct {
@@ -44,12 +45,7 @@ func (p *PostgresDB) GetUser(ctx context.Context, userID int64) (*domain.User, e
 	return &user, err
 }
 
-func (p *PostgresDB) EnableNotifications(ctx context.Context, userID int64) error {
-	_, err := p.db.ExecContext(ctx, "UPDATE telegram_bot.users SET notifications_enabled = TRUE WHERE tg_id = $1", userID)
-	return err
-}
-
-func (p *PostgresDB) AreNotificationsEnabled(ctx context.Context, userID int64) (bool, error) {
+func (p *PostgresDB) NotificationsEnabled(ctx context.Context, userID int64) (bool, error) {
 	var enabled bool
 	err := p.db.QueryRowContext(ctx, "SELECT notifications_enabled FROM telegram_bot.users WHERE tg_id = $1", userID).Scan(&enabled)
 	return enabled, err
@@ -67,7 +63,12 @@ func (p *PostgresDB) GetAllSubscribers(ctx context.Context) (map[string]int64, e
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}(rows)
 
 	for rows.Next() {
 		var iin string

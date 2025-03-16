@@ -32,7 +32,7 @@ func (s *UserService) GetUser(ctx context.Context, userID int64) (*domain.User, 
 }
 
 func (s *UserService) AreNotificationsEnabled(ctx context.Context, userID int64) (bool, error) {
-	return s.repo.AreNotificationsEnabled(ctx, userID)
+	return s.repo.NotificationsEnabled(ctx, userID)
 }
 
 func (s *UserService) ToggleNotifications(ctx context.Context, userID int64, enabled bool) error {
