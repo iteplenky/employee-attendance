@@ -10,6 +10,13 @@ import (
 	"github.com/lib/pq"
 )
 
+var (
+	ErrListenerConnectionFailed = errors.New("listener connection failed")
+	ErrListenAttendanceEvents   = errors.New("unable to listen for attendance events")
+)
+
+const listenerChannel = "attendance_events"
+
 type Listener struct {
 	listener *pq.Listener
 	db       *sql.DB
@@ -19,7 +26,7 @@ type Listener struct {
 func NewListener(dbURL string, cache *RedisCache) (*Listener, error) {
 	listener := pq.NewListener(dbURL, 10*time.Second, time.Minute, nil)
 	if listener == nil {
-		return nil, errors.New("unable to connect to database listener")
+		return nil, ErrListenerConnectionFailed
 	}
 
 	db, err := sql.Open("postgres", dbURL)
@@ -31,8 +38,8 @@ func NewListener(dbURL string, cache *RedisCache) (*Listener, error) {
 		return nil, err
 	}
 
-	if err = listener.Listen("attendance_events"); err != nil {
-		return nil, errors.New("unable to listen attendance_events")
+	if err = listener.Listen(listenerChannel); err != nil {
+		return nil, ErrListenAttendanceEvents
 	}
 
 	return &Listener{listener: listener, db: db, cache: cache}, nil
@@ -46,14 +53,14 @@ func (l *Listener) StartListening(ctx context.Context) {
 				continue
 			}
 			log.Printf("New attendance event: %s\n", notification.Extra)
-			if err := l.cache.Publish(ctx, "attendance_events", notification.Extra); err != nil {
+			if err := l.cache.Publish(ctx, listenerChannel, notification.Extra); err != nil {
 				log.Printf("Failed to publish event: %v\n", err)
 			}
 		case <-ctx.Done():
 			log.Println("Shutting down listener")
 			err := l.listener.Close()
 			if err != nil {
-				return
+				log.Println("Failed to close listener")
 			}
 			return
 		}

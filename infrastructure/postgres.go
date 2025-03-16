@@ -48,6 +48,9 @@ func (p *PostgresDB) GetUser(ctx context.Context, userID int64) (*domain.User, e
 func (p *PostgresDB) NotificationsEnabled(ctx context.Context, userID int64) (bool, error) {
 	var enabled bool
 	err := p.db.QueryRowContext(ctx, "SELECT notifications_enabled FROM telegram_bot.users WHERE tg_id = $1", userID).Scan(&enabled)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
 	return enabled, err
 }
 

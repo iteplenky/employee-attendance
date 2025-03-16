@@ -11,6 +11,10 @@ import (
 	"log"
 )
 
+var (
+	ErrUserNotFound = errors.New("no user found")
+)
+
 func showStartMenu(b *gotgbot.Bot, ctx *ext.Context) {
 	keyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
@@ -35,7 +39,7 @@ func SettingsMenuCallbackHandler(db *application.UserService) handlers.CallbackQ
 
 		if user == nil {
 			sendErrorMessage(b, cb, userID, "Ошибка загрузки профиля.")
-			return errors.New("no user found")
+			return ErrUserNotFound
 		}
 
 		keyboard := gotgbot.InlineKeyboardMarkup{

@@ -35,6 +35,7 @@ func (s *SubscriptionService) LoadSubscribersToCache(ctx context.Context) error 
 
 	return nil
 }
+
 func (s *SubscriptionService) SaveSubscribersToCache(ctx context.Context, subscribers map[string]int64) error {
 	for iin, userID := range subscribers {
 		if err := s.cache.Set(ctx, iin, strconv.FormatInt(userID, 10)); err != nil {

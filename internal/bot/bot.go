@@ -2,7 +2,7 @@ package bot
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"github.com/iteplenky/employee-attendance/internal/handlers"
 	"log"
 	"os"
@@ -16,6 +16,13 @@ import (
 	"github.com/iteplenky/employee-attendance/application"
 )
 
+var (
+	ErrLoadSubsCache   = errors.New("failed to load subscribers to cache")
+	ErrStartPolling    = errors.New("failed to start polling")
+	ErrEnvTokenIsEmpty = errors.New("TOKEN environment variable not set")
+	ErrTokenVerify     = errors.New("failed to verify token")
+)
+
 type Bot struct {
 	Bot                 *gotgbot.Bot
 	Dispatcher          *ext.Dispatcher
@@ -27,12 +34,12 @@ type Bot struct {
 func NewBot(userService *application.UserService, subs *application.SubscriptionService, fetcher *application.FetcherService) (*Bot, error) {
 	token := os.Getenv("TOKEN")
 	if token == "" {
-		return nil, fmt.Errorf("TOKEN environment variable is empty")
+		return nil, ErrEnvTokenIsEmpty
 	}
 
 	b, err := gotgbot.NewBot(token, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new bot: %w", err)
+		return nil, ErrTokenVerify
 	}
 
 	dispatcher := ext.NewDispatcher(nil)
@@ -47,18 +54,17 @@ func NewBot(userService *application.UserService, subs *application.Subscription
 }
 
 func (b *Bot) Start(ctx context.Context) error {
-	subscribers, err := b.SubscriptionService.GetAllSubscribers(ctx)
-	if err != nil {
-		return fmt.Errorf("get all subscribers failed: %w", err)
-	}
 
-	if err = b.SubscriptionService.SaveSubscribersToCache(ctx, subscribers); err != nil {
-		return fmt.Errorf("failed to load subscribers: %w", err)
+	err := b.SubscriptionService.LoadSubscribersToCache(ctx)
+	if err != nil {
+		log.Printf("failed to load subscribers to cache: %v", err)
+		return ErrLoadSubsCache
 	}
 
 	updater := ext.NewUpdater(b.Dispatcher, nil)
 	if err = StartPolling(b, updater); err != nil {
-		return fmt.Errorf("failed to start polling: %w", err)
+		log.Printf("failed to start polling: %v", err)
+		return ErrStartPolling
 	}
 
 	log.Printf("%s has been started...\n", b.Bot.User.Username)
@@ -69,7 +75,9 @@ func (b *Bot) Start(ctx context.Context) error {
 	<-sig
 	log.Println("Shutting down...")
 
-	updater.Stop()
+	if err = updater.Stop(); err != nil {
+		log.Printf("failed to stop updater: %v", err)
+	}
 	log.Println("Bot stopped gracefully")
 
 	return nil

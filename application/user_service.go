@@ -7,6 +7,10 @@ import (
 	"github.com/iteplenky/employee-attendance/domain"
 )
 
+var (
+	ErrUserAlreadyExists = errors.New("user already exists")
+)
+
 type UserService struct {
 	repo domain.UserRepository
 }
@@ -16,12 +20,12 @@ func NewUserService(repo domain.UserRepository) *UserService {
 }
 
 func (s *UserService) RegisterUser(ctx context.Context, userID int64, iin string) error {
-	exists, err := s.repo.UserExists(ctx, userID)
+	user, err := s.repo.GetUser(ctx, userID)
 	if err != nil {
 		return err
 	}
-	if exists {
-		return errors.New("user already exists")
+	if user != nil {
+		return ErrUserAlreadyExists
 	}
 
 	return s.repo.RegisterUser(ctx, userID, iin)

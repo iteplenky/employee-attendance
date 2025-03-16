@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/iteplenky/employee-attendance/domain"
+	"log"
 )
 
 type Fetcher struct {
@@ -28,12 +29,17 @@ func (f *Fetcher) GetAllAttendanceRecords(ctx context.Context) ([]domain.Attenda
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}(rows)
 
 	var events []domain.AttendanceEvent
 	for rows.Next() {
 		var event domain.AttendanceEvent
-		if err := rows.Scan(&event.ID, &event.IIN, &event.PunchTime, &event.TerminalAlias, &event.Processed); err != nil {
+		if err = rows.Scan(&event.ID, &event.IIN, &event.PunchTime, &event.TerminalAlias, &event.Processed); err != nil {
 			return nil, err
 		}
 		events = append(events, event)
@@ -55,7 +61,12 @@ func (f *Fetcher) GetUserAttendanceRecords(ctx context.Context, iin string) ([]d
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}(rows)
 
 	var events []domain.AttendanceEvent
 	for rows.Next() {
