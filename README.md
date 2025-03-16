@@ -1,5 +1,3 @@
--
-
 # Employee Attendance Bot
 
 A Telegram bot that integrates with ZKTeco Biotime for real-time attendance tracking.
