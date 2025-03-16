@@ -7,7 +7,7 @@ until pg_isready -h postgres -p 5432 -U user; do
 done
 
 echo "Running migrations..."
-goose -dir /app/database/migrations postgres "$DATABASE_URL" up
+migrate -database "$DATABASE_URL" -path /app/database/migrations up
 
 echo "Starting bot..."
 exec /app/bot
